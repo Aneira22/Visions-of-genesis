@@ -18,8 +18,12 @@ namespace VisionsOfGenesis.Combat
         public bool isDefending { get; private set; }
         public bool isDead => currentHP <= 0;
 
-        // Effective stats: base stats from UnitData scaled by Level.
+        // Element used by this unit's basic attack (falls back to Neutral).
+        public Element ElementType => data != null ? data.element : Element.Neutral;
+
+        // Effective stats: base stats from UnitData scaled by Level and Stars.
         public int Level { get; private set; } = 1;
+        public int Stars { get; private set; } = 1;
         public int MaxHP { get; private set; }
         public int MaxMP { get; private set; }
         public int Attack { get; private set; }
@@ -46,11 +50,12 @@ namespace VisionsOfGenesis.Combat
             _initialized = true;
         }
 
-        public void Initialize(UnitData newData, bool asPlayer, int level = 1)
+        public void Initialize(UnitData newData, bool asPlayer, int level = 1, int stars = 1)
         {
             data = newData;
             isPlayer = asPlayer;
             Level = Mathf.Max(1, level);
+            Stars = Mathf.Clamp(stars, 1, 5);
             if (data != null)
             {
                 ApplyLevelScaling();
@@ -64,9 +69,12 @@ namespace VisionsOfGenesis.Combat
 
         private void ApplyLevelScaling()
         {
-            float hpMul  = 1f + 0.10f * (Level - 1);
-            float mpMul  = 1f + 0.05f * (Level - 1);
-            float atkMul = 1f + 0.08f * (Level - 1);
+            // Each star above 1 grants +15% to all stats (FFBE-style awakening boost).
+            float starMul = 1f + 0.15f * (Stars - 1);
+
+            float hpMul  = (1f + 0.10f * (Level - 1)) * starMul;
+            float mpMul  = (1f + 0.05f * (Level - 1)) * starMul;
+            float atkMul = (1f + 0.08f * (Level - 1)) * starMul;
 
             MaxHP   = Mathf.Max(1, Mathf.RoundToInt(data.maxHP * hpMul));
             MaxMP   = Mathf.Max(0, Mathf.RoundToInt(data.maxMP * mpMul));
@@ -108,6 +116,14 @@ namespace VisionsOfGenesis.Combat
             currentMP -= cost;
             OnStateChanged?.Invoke();
             return true;
+        }
+
+        public void RestoreMP(int amount)
+        {
+            int before = currentMP;
+            currentMP = Mathf.Min(MaxMP, currentMP + amount);
+            if (currentMP > before)
+                OnStateChanged?.Invoke();
         }
 
         public void SetDefending(bool value)

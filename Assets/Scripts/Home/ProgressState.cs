@@ -76,6 +76,23 @@ namespace VisionsOfGenesis.Home
 
         private static readonly HashSet<string> _completed = new HashSet<string>();
 
+        // SaveSystem access
+        public static long RegenAnchorTicks => _regenAnchor.Ticks;
+        public static IEnumerable<string> CompletedEntries => _completed;
+
+        public static void LoadRegenAnchor(long ticks)
+        {
+            _regenAnchor = ticks > 0
+                ? new System.DateTime(ticks, System.DateTimeKind.Utc)
+                : System.DateTime.UtcNow;
+        }
+
+        public static void LoadCompleted(IEnumerable<string> entries)
+        {
+            _completed.Clear();
+            if (entries != null) foreach (var e in entries) _completed.Add(e);
+        }
+
         public static void TickRegen()
         {
             var now = System.DateTime.UtcNow;

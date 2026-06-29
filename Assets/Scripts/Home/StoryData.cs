@@ -96,7 +96,9 @@ namespace VisionsOfGenesis.Home
                 {
                     new Reward("Oro", 150),
                     new Reward("Cristales", 50),
-                    new Reward("Pocion", 1),
+                    new Reward("Poción", 2),
+                    new Reward("Éter", 1),
+                    new Reward("Fragmento Etereo", 2),
                     new Reward("EXP Visiones", 100),
                     new Reward("EXP Sincronizador", 60)
                 },
@@ -127,6 +129,9 @@ namespace VisionsOfGenesis.Home
                 {
                     new Reward("Oro", 250),
                     new Reward("Cristales", 80),
+                    new Reward("Fragmento Etereo", 3),
+                    new Reward("Nucleo Sombrio", 1),
+                    new Reward("Esencia Corrupta", 1),
                     new Reward("EXP Visiones", 150),
                     new Reward("EXP Sincronizador", 90)
                 },

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4b5c6d7e8f9001122334455667788a4, type: 3}
+  m_Name: GameCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::VisionsOfGenesis.Data.GameCatalog
+  items:
+  - {fileID: 11400000, guid: 77a2eaa4626448449b384edf0eee12ed, type: 2}
+  - {fileID: 11400000, guid: b1c2d3e4f5061728394a5b6c7d8e9f00, type: 2}
+  materials:
+  - {fileID: 11400000, guid: d7e8f9a0b1c2033445566778890011b7, type: 2}
+  - {fileID: 11400000, guid: e8f9a0b1c2d3044556677889001122c8, type: 2}
+  - {fileID: 11400000, guid: f9a0b1c2d3e4055667788900112233d9, type: 2}
+  heroes:
+  - {fileID: 11400000, guid: aa11bb22cc33dd44ee55ff6677889901, type: 2}
+  - {fileID: 11400000, guid: aa11bb22cc33dd44ee55ff6677889902, type: 2}
+  - {fileID: 11400000, guid: aa11bb22cc33dd44ee55ff6677889903, type: 2}
+  - {fileID: 11400000, guid: aa11bb22cc33dd44ee55ff6677889904, type: 2}

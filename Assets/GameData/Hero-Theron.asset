@@ -10,18 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 29efee9d08ae117409957c31ad6a7154, type: 3}
-  m_Name: Hero-Khael
+  m_Name: Hero-Theron
   m_EditorClassIdentifier: Assembly-CSharp::VisionsOfGenesis.Data.UnitData
-  unitName: Khael
-  portrait: {fileID: -3498244795162801551, guid: 3832b2427244e1c4f918cd11166970fc, type: 3}
-  element: 5
-  maxHP: 120
-  maxMP: 30
-  attack: 22
-  defense: 12
+  unitName: Theron
+  portrait: {fileID: 0}
+  battleSprite: {fileID: 0}
+  element: 4
+  maxHP: 110
+  maxMP: 20
+  attack: 18
+  defense: 11
   skills:
   - {fileID: 11400000, guid: 9db24430a7be2e54cb57860f30cfa16f, type: 2}
-  - {fileID: 11400000, guid: 804fba1d7edc7c24f8d506e32cab9309, type: 2}
   items:
   - {fileID: 11400000, guid: 77a2eaa4626448449b384edf0eee12ed, type: 2}
-  - {fileID: 11400000, guid: b1c2d3e4f5061728394a5b6c7d8e9f00, type: 2}

@@ -12,6 +12,10 @@ namespace VisionsOfGenesis.Combat
     public class BattleBootstrap : MonoBehaviour
     {
         private readonly List<HeroInfo> _participants = new List<HeroInfo>();
+        private readonly Dictionary<string, ItemData> _itemRegistry =
+            new Dictionary<string, ItemData>(System.StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, MaterialData> _materialRegistry =
+            new Dictionary<string, MaterialData>(System.StringComparer.OrdinalIgnoreCase);
         private bool _rewardsGranted;
         private bool _exitBuilt;
 
@@ -30,6 +34,23 @@ namespace VisionsOfGenesis.Combat
             var registry = new Dictionary<string, UnitData>(System.StringComparer.OrdinalIgnoreCase);
             foreach (var u in bm.playerUnits) if (u != null && u.data != null) registry[u.data.unitName] = u.data;
             foreach (var e in bm.enemyUnits) if (e != null && e.data != null) registry[e.data.unitName] = e.data;
+
+            // Build item/material lookup from the shared GameCatalog so mission rewards
+            // (stored as display-name strings) can be resolved to ScriptableObject references.
+            // Also register summonable heroes so a gacha unit (not placed in the scene) can fight.
+            var catalog = GameCatalog.Instance;
+            if (catalog != null)
+            {
+                if (catalog.items != null)
+                    foreach (var it in catalog.items)
+                        if (it != null) _itemRegistry[it.itemName] = it;
+                if (catalog.materials != null)
+                    foreach (var m in catalog.materials)
+                        if (m != null) _materialRegistry[m.materialName] = m;
+                if (catalog.heroes != null)
+                    foreach (var h in catalog.heroes)
+                        if (h != null) registry[h.unitName] = h;
+            }
 
             var heroDatas = ResolveHeroes(registry);
             var enemyDatas = ResolveEnemies(registry);
@@ -52,7 +73,7 @@ namespace VisionsOfGenesis.Combat
             {
                 var unitGo = new GameObject("Hero_" + heroDatas[k].unitName);
                 var unit = unitGo.AddComponent<UnitComponent>();
-                unit.Initialize(heroDatas[k], true, _participants[k].level);
+                unit.Initialize(heroDatas[k], true, _participants[k].level, _participants[k].stars);
 
                 var panel = Instantiate(panelTemplate, panelParent).GetComponent<PortraitPanel>();
                 panel.playerIndex = k;
@@ -135,6 +156,27 @@ namespace VisionsOfGenesis.Combat
                 Wallet.AddCrystals(entry.crystalReward);
                 lines.Add("Cristales  +" + entry.crystalReward);
             }
+
+            if (entry.rewards != null)
+            {
+                foreach (var r in entry.rewards)
+                {
+                    if (r == null || string.IsNullOrEmpty(r.name)) continue;
+
+                    if (_itemRegistry.TryGetValue(r.name, out var itemData) && itemData != null)
+                    {
+                        Inventory.AddItem(itemData, r.amount);
+                        lines.Add(itemData.itemName + "  +" + r.amount);
+                    }
+                    else if (_materialRegistry.TryGetValue(r.name, out var matData) && matData != null)
+                    {
+                        Inventory.AddMaterial(matData, r.amount);
+                        lines.Add(matData.materialName + "  +" + r.amount);
+                    }
+                }
+            }
+
+            SaveSystem.Save();
 
             if (lines.Count > 0 && ui != null)
                 ui.AppendEndScreenDetail(string.Join("\n", lines));

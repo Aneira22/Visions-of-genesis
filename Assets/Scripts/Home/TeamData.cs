@@ -10,25 +10,23 @@ namespace VisionsOfGenesis.Home
         public string role;
         public int level = 1;
         public int exp;
+        public int stars = 1;
         public Color accent = new Color(0.5f, 0.5f, 0.6f, 1f);
         public int portraitIndex = -1;
     }
 
     public static class HeroRoster
     {
+        // The default roster (starters only). See HeroCatalog for the full hero list.
         public static List<HeroInfo> BuildOwned()
         {
-            return new List<HeroInfo>
-            {
-                new HeroInfo { id = "khael", name = "Khael", role = "Espada",   level = 1, accent = new Color(0.9098039f, 0.2901961f, 0.3529412f, 1f), portraitIndex = 0 },
-                new HeroInfo { id = "aria",  name = "Aria",  role = "Sanadora", level = 1, accent = new Color(0.21176471f, 0.7882353f, 0.9411765f, 1f), portraitIndex = 1 },
-            };
+            return HeroCatalog.Starters();
         }
     }
 
     public static class TeamState
     {
-        public const int PartySize = 5;
+        public const int PartySize = 4;
         public const int PartyCount = 3;
 
         public static List<HeroInfo> Owned;

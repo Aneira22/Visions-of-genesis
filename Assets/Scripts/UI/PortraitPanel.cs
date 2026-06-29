@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using VisionsOfGenesis.Combat;
 using VisionsOfGenesis.Data;
+using VisionsOfGenesis.Home;
 using VisionsOfGenesis.InputSystem;
 
 namespace VisionsOfGenesis.UI
@@ -34,8 +35,9 @@ namespace VisionsOfGenesis.UI
         [Header("Input")]
         public SwipeInputHandler swipeHandler;
 
-        private enum SubMenu { None, Skills, Items }
+        private enum SubMenu { None, Skills, Items, ItemTarget }
         private SubMenu _openMenu = SubMenu.None;
+        private ItemData _pendingItem;
 
         private PlayerAction _armedAction;
         private string _armedLabel = "Attack";
@@ -146,20 +148,67 @@ namespace VisionsOfGenesis.UI
             mainView.SetActive(false);
             subMenuView.SetActive(true);
             SetOthersMainViewVisible(false);
-
             ClearSubMenuButtons();
-            if (boundUnit?.data?.items == null) return;
 
-            foreach (var item in boundUnit.data.items)
+            var usable = BattleBag.GetUsable();
+
+            if (usable.Count == 0)
             {
-                if (item == null) continue;
-                ItemData captured = item;
-                SpawnSubMenuButton(item.itemName, () =>
+                if (subMenuButtonsRoot != null)
                 {
-                    Arm(PlayerAction.MakeItem(captured), captured.itemName);
+                    var empty = UIFactory.CreateText("NoItems", subMenuButtonsRoot, UIFactory.DefaultFont(),
+                        "Sin items\nConfigura tu mochila en Equipo", 18,
+                        new Color(1f, 1f, 1f, 0.6f), TextAnchor.MiddleCenter);
+                    UIFactory.Stretch(empty.rectTransform);
+                }
+                return;
+            }
+
+            foreach (var item in usable)
+            {
+                int count = Inventory.GetItemCount(item);
+                ItemData captured = item;
+                SpawnSubMenuButton(captured.itemName + "\n<size=14>x" + count + "</size>",
+                    () => OpenItemTargetMenu(captured));
+            }
+        }
+
+        private void OpenItemTargetMenu(ItemData item)
+        {
+            _openMenu = SubMenu.ItemTarget;
+            _pendingItem = item;
+            ClearSubMenuButtons();
+
+            var bm = BattleManager.Instance;
+            if (bm == null) { ShowMainView(); return; }
+
+            foreach (var unit in bm.playerUnits)
+            {
+                if (unit == null || unit.isDead) continue;
+                UnitComponent captured = unit;
+                string label = (unit.data?.unitName ?? "Aliado") +
+                               "\n<size=14>HP " + unit.currentHP + "/" + unit.MaxHP + "</size>";
+                SpawnSubMenuButton(label, () =>
+                {
+                    Arm(PlayerAction.MakeItem(item, captured), item.itemName);
                     ShowMainView();
                 });
             }
+
+            foreach (var unit in bm.enemyUnits)
+            {
+                if (unit == null || unit.isDead) continue;
+                UnitComponent captured = unit;
+                string label = (unit.data?.unitName ?? "Enemigo") +
+                               "\n<size=14>HP " + unit.currentHP + "/" + unit.MaxHP + "</size>";
+                SpawnSubMenuButton(label, () =>
+                {
+                    Arm(PlayerAction.MakeItem(item, captured), item.itemName);
+                    ShowMainView();
+                });
+            }
+
+            SpawnSubMenuButton("< Volver", () => OpenItemsMenu());
         }
 
         private void ShowMainView()

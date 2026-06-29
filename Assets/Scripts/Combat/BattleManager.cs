@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using VisionsOfGenesis.Data;
+using VisionsOfGenesis.Home;
 
 namespace VisionsOfGenesis.Combat
 {
@@ -86,8 +87,9 @@ namespace VisionsOfGenesis.Combat
                     UnitComponent target = PickRandomLivingPlayer();
                     if (target == null) break;
 
-                    int dmg = CombatActions.Attack(enemy, target);
+                    int dmg = CombatActions.Attack(enemy, target, out float enemyAff);
                     uiManager?.ShowFloatingNumber(target, dmg, false);
+                    ShowAffinity(target, enemyAff);
 
                     if (CheckEndConditions()) yield break;
                     yield return new WaitForSeconds(stepDelay);
@@ -150,12 +152,20 @@ namespace VisionsOfGenesis.Combat
                 return;
             }
 
+            if (action.kind == PlayerActionKind.Item &&
+                (action.item == null || Inventory.GetItemCount(action.item) <= 0))
+            {
+                uiManager?.ShowFloatingText(source, "Sin items");
+                return;
+            }
+
             switch (action.kind)
             {
                 case PlayerActionKind.Attack:
                 {
-                    int dmg = CombatActions.Attack(source, enemy);
+                    int dmg = CombatActions.Attack(source, enemy, out float aff);
                     uiManager?.ShowFloatingNumber(enemy, dmg, false);
+                    ShowAffinity(enemy, aff);
                     break;
                 }
                 case PlayerActionKind.Defend:
@@ -166,20 +176,27 @@ namespace VisionsOfGenesis.Combat
                 }
                 case PlayerActionKind.Skill:
                 {
-                    int amount = CombatActions.UseSkill(source, action.skill, enemy);
+                    int amount = CombatActions.UseSkill(source, action.skill, enemy, out float aff);
                     if (amount > 0)
                     {
                         bool isHeal = action.skill.type == SkillType.Heal;
                         UnitComponent target = isHeal ? source : enemy;
                         uiManager?.ShowFloatingNumber(target, amount, isHeal);
+                        if (!isHeal) ShowAffinity(enemy, aff);
                     }
                     break;
                 }
                 case PlayerActionKind.Item:
                 {
-                    int amount = CombatActions.UseItem(source, action.item);
+                    UnitComponent itemTarget = action.target ?? source;
+                    int amount = CombatActions.UseItem(source, action.item, itemTarget);
                     if (amount > 0)
-                        uiManager?.ShowFloatingNumber(source, amount, true);
+                    {
+                        if (action.item.effect == ItemEffect.HealMP)
+                            uiManager?.ShowFloatingText(itemTarget, "+" + amount + " MP");
+                        else
+                            uiManager?.ShowFloatingNumber(itemTarget, amount, true);
+                    }
                     break;
                 }
             }
@@ -280,6 +297,15 @@ namespace VisionsOfGenesis.Combat
             uiManager?.ShowEndScreen("DERROTA");
             OnBattleEnded?.Invoke(false);
         }
+
+        // Floating "¡Débil!" / "Resiste" feedback, only when the hit was non-neutral.
+        private void ShowAffinity(UnitComponent target, float affinity)
+        {
+            if (uiManager == null || target == null) return;
+            string label = Elements.Label(affinity);
+            if (!string.IsNullOrEmpty(label))
+                uiManager.ShowFloatingText(target, label);
+        }
     }
 
 
@@ -290,10 +316,11 @@ namespace VisionsOfGenesis.Combat
         public PlayerActionKind kind;
         public SkillData skill;
         public ItemData item;
+        public UnitComponent target;
 
-        public static PlayerAction MakeAttack()             => new PlayerAction { kind = PlayerActionKind.Attack };
-        public static PlayerAction MakeDefend()             => new PlayerAction { kind = PlayerActionKind.Defend };
-        public static PlayerAction MakeSkill(SkillData s)   => new PlayerAction { kind = PlayerActionKind.Skill, skill = s };
-        public static PlayerAction MakeItem(ItemData i)     => new PlayerAction { kind = PlayerActionKind.Item, item = i };
+        public static PlayerAction MakeAttack()                              => new PlayerAction { kind = PlayerActionKind.Attack };
+        public static PlayerAction MakeDefend()                              => new PlayerAction { kind = PlayerActionKind.Defend };
+        public static PlayerAction MakeSkill(SkillData s)                    => new PlayerAction { kind = PlayerActionKind.Skill, skill = s };
+        public static PlayerAction MakeItem(ItemData i, UnitComponent t)     => new PlayerAction { kind = PlayerActionKind.Item, item = i, target = t };
     }
 }

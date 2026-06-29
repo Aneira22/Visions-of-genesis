@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using VisionsOfGenesis.Data;
 using VisionsOfGenesis.InputSystem;
 
 namespace VisionsOfGenesis.Home
@@ -43,11 +44,24 @@ namespace VisionsOfGenesis.Home
         GameObject _comingSoonScreen;
         GameObject _teamScreen;
         GameObject _rosterScreen;
+        GameObject _itemsScreen;
+        GameObject _bagPickerScreen;
+        GameObject _gachaScreen;
+        GameObject _mejoraScreen;
 
         Transform _battleListContent;
         Transform _missionContent;
         Transform _teamContent;
         Transform _rosterContent;
+        Transform _itemsContent;
+        Transform _bagPickerContent;
+        Transform _mejoraContent;
+        Text _bagPickerTitle;
+        int _bagPickerSlot;
+        Text _gachaBalance;
+        Text _gachaResult;
+        Text _wheelCrystals;
+        Text _wheelGold;
         Text _comingSoonTitle;
         Text _comingSoonBalance;
         Text _energyLabel;
@@ -63,6 +77,8 @@ namespace VisionsOfGenesis.Home
 
         void Start()
         {
+            SaveSystem.LoadIfNeeded();
+
             _font = UIFactory.DefaultFont();
             _map = StoryDatabase.BuildForestMap();
             _sectionColors = new[] { Cyan, Green, PurpleVivid, Crimson };
@@ -75,9 +91,14 @@ namespace VisionsOfGenesis.Home
             BuildComingSoonScreen();
 
             TeamState.EnsureInit();
+            Inventory.EnsureInit();
             _owned = TeamState.Owned;
             BuildTeamScreen();
             BuildRosterScreen();
+            BuildItemsScreen();
+            BuildBagPickerScreen();
+            BuildGachaScreen();
+            BuildMejoraScreen();
 
             ShowWheel();
         }
@@ -171,15 +192,15 @@ namespace VisionsOfGenesis.Home
             _wheelScreen = MakeScreen("WheelScreen", BgDark);
             var root = _wheelScreen.transform;
 
-            var crystals = UIFactory.CreateText("Crystals", root, _font, "Cristales: " + Wallet.Crystals, 28, Cyan, TextAnchor.UpperLeft);
-            UIFactory.Place(crystals.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -30f), new Vector2(400f, 50f));
+            _wheelCrystals = UIFactory.CreateText("Crystals", root, _font, "Cristales: " + Wallet.Crystals, 28, Cyan, TextAnchor.UpperLeft);
+            UIFactory.Place(_wheelCrystals.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(40f, -30f), new Vector2(400f, 50f));
 
             _energyLabel = UIFactory.CreateText("Energy", root, _font,
                 "Energia: " + PlayerProgress.Energy + "/" + PlayerProgress.MaxEnergy, 28, Green, TextAnchor.UpperRight);
             UIFactory.Place(_energyLabel.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -30f), new Vector2(400f, 50f));
 
-            var gold = UIFactory.CreateText("Gold", root, _font, "Oro: " + Wallet.Gold, 28, GoldColor, TextAnchor.UpperRight);
-            UIFactory.Place(gold.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -78f), new Vector2(400f, 50f));
+            _wheelGold = UIFactory.CreateText("Gold", root, _font, "Oro: " + Wallet.Gold, 28, GoldColor, TextAnchor.UpperRight);
+            UIFactory.Place(_wheelGold.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -78f), new Vector2(400f, 50f));
 
             _regenLabel = UIFactory.CreateText("RegenHint", root, _font, "", 20,
                 new Color(0.24705882f, 0.8235294f, 0.47843137f, 0.8f), TextAnchor.UpperRight);
@@ -295,6 +316,7 @@ namespace VisionsOfGenesis.Home
             {
                 case 0: ShowMap(); break;
                 case 1: ShowTeam(); break;
+                case 3: ShowGacha(); break;
                 default: ShowComingSoon(_sections[_wheelIndex]); break;
             }
         }
@@ -478,9 +500,19 @@ namespace VisionsOfGenesis.Home
             if (_comingSoonScreen != null) _comingSoonScreen.SetActive(screen == _comingSoonScreen);
             if (_teamScreen != null) _teamScreen.SetActive(screen == _teamScreen);
             if (_rosterScreen != null) _rosterScreen.SetActive(screen == _rosterScreen);
+            if (_itemsScreen != null) _itemsScreen.SetActive(screen == _itemsScreen);
+            if (_bagPickerScreen != null) _bagPickerScreen.SetActive(screen == _bagPickerScreen);
+            if (_gachaScreen != null) _gachaScreen.SetActive(screen == _gachaScreen);
+            if (_mejoraScreen != null) _mejoraScreen.SetActive(screen == _mejoraScreen);
         }
 
-        void ShowWheel() => ShowOnly(_wheelScreen);
+        void ShowWheel()
+        {
+            SaveSystem.Save();
+            if (_wheelCrystals != null) _wheelCrystals.text = "Cristales: " + Wallet.Crystals;
+            if (_wheelGold != null) _wheelGold.text = "Oro: " + Wallet.Gold;
+            ShowOnly(_wheelScreen);
+        }
         void ShowMap() => ShowOnly(_mapScreen);
 
         void ShowBattleList(StoryZone zone)
@@ -530,6 +562,14 @@ namespace VisionsOfGenesis.Home
             AddHeader(root, "Equipo");
             AddBackButton(root, ShowWheel);
 
+            var itemsBtn = UIFactory.CreateButton("OpenItems", root, _font, "Items", 30, Purple, TextLight);
+            UIFactory.Place((RectTransform)itemsBtn.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-40f, -50f), new Vector2(220f, 90f));
+            itemsBtn.onClick.AddListener(ShowItems);
+
+            var mejorarBtn = UIFactory.CreateButton("OpenMejora", root, _font, "Mejorar", 30, Purple, TextLight);
+            UIFactory.Place((RectTransform)mejorarBtn.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-270f, -50f), new Vector2(220f, 90f));
+            mejorarBtn.onClick.AddListener(ShowMejora);
+
             var partyLeft = UIFactory.CreateButton("PartyLeft", root, _font, "<", 36, Purple, TextLight);
             UIFactory.Place((RectTransform)partyLeft.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-230f, -165f), new Vector2(90f, 70f));
             partyLeft.onClick.AddListener(() => SetParty(TeamState.CurrentParty - 1));
@@ -546,7 +586,7 @@ namespace VisionsOfGenesis.Home
             UIFactory.Place((RectTransform)content.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -255f), Vector2.zero);
             _teamContent = content.transform;
 
-            _teamStatus = UIFactory.CreateText("Status", root, _font, "Toca un espacio para cambiar de Vision", 26,
+            _teamStatus = UIFactory.CreateText("Status", root, _font, "Toca un espacio para asignar una Vision", 26,
                 new Color(1f, 1f, 1f, 0.7f), TextAnchor.MiddleCenter);
             UIFactory.Place(_teamStatus.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(1000f, 60f));
         }
@@ -559,20 +599,17 @@ namespace VisionsOfGenesis.Home
             for (int i = 0; i < TeamState.PartySize; i++)
             {
                 int slot = i;
-                BuildHeroCard(_teamContent, i, 360f, TeamState.Party[i], false, () => ShowRoster(slot));
+                BuildHeroCard(_teamContent, i, 400f, TeamState.Party[i], false, () => ShowRoster(slot), 2);
             }
-
-            BuildHeroCard(_teamContent, TeamState.PartySize, 360f, null, true, () =>
-            {
-                if (_teamStatus != null) _teamStatus.text = "El espacio de amigo se habilitara mas adelante.";
-            });
         }
 
-        void BuildHeroCard(Transform parent, int gridIndex, float height, HeroInfo hero, bool isFriend, System.Action onClick)
+        void BuildHeroCard(Transform parent, int gridIndex, float height, HeroInfo hero, bool isFriend, System.Action onClick, int numCols = 3)
         {
-            int col = gridIndex % 3;
-            int row = gridIndex / 3;
-            float x = (col - 1) * 340f;
+            int col = gridIndex % numCols;
+            int row = gridIndex / numCols;
+            float colWidth  = numCols == 2 ? 380f : 340f;
+            float colOffset = (numCols - 1) / 2f;
+            float x = (col - colOffset) * colWidth;
             float y = -row * (height + 40f);
 
             var go = UIFactory.NewUI("Card_" + gridIndex, parent, typeof(CanvasRenderer), typeof(Image), typeof(Button));
@@ -611,8 +648,16 @@ namespace VisionsOfGenesis.Home
 
             string nameStr = hero != null ? hero.name : (isFriend ? "Amigo" : "Vacio");
             var nameT = UIFactory.CreateText("Name", card, _font, nameStr, 32, TextLight, TextAnchor.MiddleCenter);
-            UIFactory.Place(nameT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -236f), new Vector2(280f, 44f));
+            UIFactory.Place(nameT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -236f), new Vector2(280f, 40f));
             nameT.fontStyle = FontStyle.Bold;
+
+            if (hero != null)
+            {
+                string stars = "";
+                for (int s = 1; s <= 5; s++) stars += s <= hero.stars ? "★" : "☆";
+                var starsT = UIFactory.CreateText("Stars", card, _font, stars, 20, GoldColor, TextAnchor.MiddleCenter);
+                UIFactory.Place(starsT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -278f), new Vector2(280f, 26f));
+            }
 
             string subText;
             if (hero != null)
@@ -629,7 +674,7 @@ namespace VisionsOfGenesis.Home
             var subT = UIFactory.CreateText("SubInfo", card, _font, subText, 20,
                 isFriend && hero == null ? new Color(1f, 0.7f, 0.3f, 1f) : new Color(1f, 1f, 1f, 0.65f),
                 TextAnchor.MiddleCenter);
-            UIFactory.Place(subT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -284f), new Vector2(280f, 58f));
+            UIFactory.Place(subT.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -308f), new Vector2(280f, 58f));
         }
 
         void BuildRosterScreen()
@@ -682,8 +727,8 @@ namespace VisionsOfGenesis.Home
                 int col = j % 3;
                 int rowi = j / 3;
                 float x = (col - 1) * 340f;
-                float y = -rowi * 360f - 10f;
-                UIFactory.Place((RectTransform)go.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(300f, 340f));
+                float y = -rowi * 400f - 10f;
+                UIFactory.Place((RectTransform)go.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(300f, 380f));
 
                 FillHeroCard(go.transform, hero, false);
 
@@ -702,7 +747,7 @@ namespace VisionsOfGenesis.Home
             }
 
             int rows = Mathf.CeilToInt(_owned.Count / 3f);
-            ((RectTransform)_rosterContent).sizeDelta = new Vector2(0f, rows * 360f + 20f);
+            ((RectTransform)_rosterContent).sizeDelta = new Vector2(0f, rows * 400f + 20f);
         }
 
         bool IsInParty(HeroInfo hero)
@@ -724,12 +769,13 @@ namespace VisionsOfGenesis.Home
                 TeamState.Party[existing] = TeamState.Party[slot];
 
             TeamState.Party[slot] = hero;
+            SaveSystem.Save();
         }
 
         void ShowTeam()
         {
             TeamState.EnsureInit();
-            if (_teamStatus != null) _teamStatus.text = "Toca un espacio para cambiar de Vision";
+            if (_teamStatus != null) _teamStatus.text = "Toca un espacio para asignar una Vision";
             if (_partyLabel != null) _partyLabel.text = "Equipo " + (TeamState.CurrentParty + 1);
             PopulateTeam();
             ShowOnly(_teamScreen);
@@ -748,6 +794,400 @@ namespace VisionsOfGenesis.Home
             _selectedSlot = slot;
             PopulateRoster(slot);
             ShowOnly(_rosterScreen);
+        }
+
+        void BuildItemsScreen()
+        {
+            _itemsScreen = MakeScreen("ItemsScreen", BgDark);
+            var root = _itemsScreen.transform;
+
+            AddHeader(root, "Items");
+            AddBackButton(root, ShowTeam);
+
+            var scroll = UIFactory.CreateVerticalScroll("ItemsScroll", root, out RectTransform content);
+            var srt = (RectTransform)scroll.transform;
+            srt.anchorMin = new Vector2(0f, 0f);
+            srt.anchorMax = new Vector2(1f, 1f);
+            srt.offsetMin = new Vector2(40f, 40f);
+            srt.offsetMax = new Vector2(-40f, -160f);
+            _itemsContent = content;
+        }
+
+        void PopulateItems()
+        {
+            for (int i = _itemsContent.childCount - 1; i >= 0; i--)
+                Destroy(_itemsContent.GetChild(i).gameObject);
+
+            float y = 0f;
+            y = AddBagSection(y);
+            y -= 20f;
+            y = AddItemsSectionHeader("Consumibles", Cyan, y);
+
+            bool anyItem = false;
+            foreach (var kvp in Inventory.Items)
+            {
+                if (kvp.Key == null || kvp.Value <= 0) continue;
+                y = AddItemRow(kvp.Key.itemName, kvp.Key.description, kvp.Value, y);
+                anyItem = true;
+            }
+            if (!anyItem)
+                y = AddItemsEmptyRow("Aun no tienes items. Se consiguen en aventuras o, mas adelante, en la Tienda.", y);
+
+            y -= 30f;
+            y = AddItemsSectionHeader("Materiales", Green, y);
+
+            bool anyMaterial = false;
+            foreach (var kvp in Inventory.Materials)
+            {
+                if (kvp.Key == null || kvp.Value <= 0) continue;
+                y = AddItemRow(kvp.Key.materialName, kvp.Key.description, kvp.Value, y);
+                anyMaterial = true;
+            }
+            if (!anyMaterial)
+                y = AddItemsEmptyRow("Aun no hay materiales de mejora; llegaran con el sistema de mejora de Visiones.", y);
+
+            ((RectTransform)_itemsContent).sizeDelta = new Vector2(0f, -y + 20f);
+        }
+
+        float AddItemsSectionHeader(string title, Color color, float y)
+        {
+            var t = UIFactory.CreateText("Section_" + title, _itemsContent, _font, title, 34, color, TextAnchor.UpperLeft);
+            UIFactory.Place(t.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(900f, 50f));
+            t.fontStyle = FontStyle.Bold;
+            return y - 60f;
+        }
+
+        float AddItemsEmptyRow(string text, float y)
+        {
+            var t = UIFactory.CreateText("Empty", _itemsContent, _font, text, 24, new Color(1f, 1f, 1f, 0.55f), TextAnchor.UpperLeft);
+            UIFactory.Place(t.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(900f, 70f));
+            return y - 90f;
+        }
+
+        float AddItemRow(string name, string description, int count, float y)
+        {
+            var row = UIFactory.CreateImage("Row_" + name, _itemsContent, Purple);
+            UIFactory.Place(row.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(940f, 110f));
+
+            var nameT = UIFactory.CreateText("Name", row.transform, _font, name, 30, TextLight, TextAnchor.MiddleLeft);
+            UIFactory.Place(nameT.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, 10f), new Vector2(560f, 50f));
+            nameT.fontStyle = FontStyle.Bold;
+
+            if (!string.IsNullOrEmpty(description))
+            {
+                var descT = UIFactory.CreateText("Desc", row.transform, _font, description, 18, new Color(1f, 1f, 1f, 0.6f), TextAnchor.MiddleLeft);
+                UIFactory.Place(descT.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(30f, -22f), new Vector2(560f, 34f));
+            }
+
+            var countT = UIFactory.CreateText("Count", row.transform, _font, "x" + count, 32, Cyan, TextAnchor.MiddleRight);
+            UIFactory.Place(countT.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-30f, 0f), new Vector2(160f, 60f));
+            countT.fontStyle = FontStyle.Bold;
+
+            return y - 130f;
+        }
+
+        void ShowItems()
+        {
+            PopulateItems();
+            ShowOnly(_itemsScreen);
+        }
+
+        float AddBagSection(float y)
+        {
+            y = AddItemsSectionHeader("Mochila de Batalla", PurpleVivid, y);
+
+            const float slotW = 280f, slotH = 120f, colGap = 20f, rowGap = 15f;
+            const float startX = 10f;
+
+            for (int i = 0; i < BattleBag.MaxSlots; i++)
+            {
+                int col = i % 3;
+                int row = i / 3;
+                float x = startX + col * (slotW + colGap);
+                float slotY = y - row * (slotH + rowGap);
+
+                var itemInSlot = BattleBag.GetSlot(i);
+                string label;
+                Color bg;
+                if (itemInSlot != null)
+                {
+                    int count = Inventory.GetItemCount(itemInSlot);
+                    if (count > 0)
+                    {
+                        label = itemInSlot.itemName + "\n<size=18>x" + count + "</size>";
+                        bg = Purple;
+                    }
+                    else
+                    {
+                        label = itemInSlot.itemName + "\n<size=18>sin stock</size>";
+                        bg = new Color(0.28f, 0.18f, 0.28f, 1f);
+                    }
+                }
+                else
+                {
+                    label = "+\nVacío";
+                    bg = new Color(0.12f, 0.10f, 0.22f, 1f);
+                }
+
+                int capturedSlot = i;
+                var btn = UIFactory.CreateButton("BagSlot" + i, _itemsContent, _font, label, 22, bg, TextLight);
+                UIFactory.Place((RectTransform)btn.transform,
+                    new Vector2(0f, 1f), new Vector2(0f, 1f),
+                    new Vector2(x, slotY), new Vector2(slotW, slotH));
+                btn.onClick.AddListener(() => ShowBagPicker(capturedSlot));
+            }
+
+            y -= 2 * (slotH + rowGap);
+            return y - 20f;
+        }
+
+        void BuildBagPickerScreen()
+        {
+            _bagPickerScreen = MakeScreen("BagPickerScreen", BgDark);
+            var root = _bagPickerScreen.transform;
+
+            _bagPickerTitle = UIFactory.CreateText("Header", root, _font, "Elegir item", 46, TextLight, TextAnchor.MiddleCenter);
+            UIFactory.Place(_bagPickerTitle.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -70f), new Vector2(940f, 90f));
+            _bagPickerTitle.fontStyle = FontStyle.Bold;
+
+            AddBackButton(root, ShowItems);
+
+            var scroll = UIFactory.CreateVerticalScroll("PickerScroll", root, out RectTransform content);
+            var srt = (RectTransform)scroll.transform;
+            srt.anchorMin = new Vector2(0f, 0f);
+            srt.anchorMax = new Vector2(1f, 1f);
+            srt.offsetMin = new Vector2(40f, 40f);
+            srt.offsetMax = new Vector2(-40f, -160f);
+            _bagPickerContent = content;
+        }
+
+        void PopulateBagPicker(int slot)
+        {
+            if (_bagPickerTitle != null)
+                _bagPickerTitle.text = "Elegir item  -  Espacio " + (slot + 1);
+
+            for (int i = _bagPickerContent.childCount - 1; i >= 0; i--)
+                Destroy(_bagPickerContent.GetChild(i).gameObject);
+
+            float y = 0f;
+            int shown = 0;
+
+            if (BattleBag.GetSlot(slot) != null)
+            {
+                int capturedSlot = slot;
+                var clearBtn = UIFactory.CreateButton("Clear", _bagPickerContent, _font, "Vacío  (quitar item)", 28, Crimson, TextLight);
+                UIFactory.Place((RectTransform)clearBtn.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(900f, 100f));
+                clearBtn.onClick.AddListener(() => { BattleBag.ClearSlot(capturedSlot); ShowItems(); });
+                y -= 120f;
+                shown++;
+            }
+
+            foreach (var kvp in Inventory.Items)
+            {
+                if (kvp.Key == null || kvp.Value <= 0) continue;
+                ItemData item = kvp.Key;
+                int count = kvp.Value;
+                int capturedSlot = slot;
+
+                string desc = string.IsNullOrEmpty(item.description) ? "" :
+                    ("\n<size=20><color=#FFFFFFAA>" + item.description + "</color></size>");
+                string btnLabel = item.itemName + "   x" + count + desc;
+
+                var btn = UIFactory.CreateButton("Pick_" + item.itemName, _bagPickerContent, _font, btnLabel, 28, Purple, TextLight);
+                UIFactory.Place((RectTransform)btn.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(900f, 120f));
+                btn.onClick.AddListener(() => { BattleBag.SetSlot(capturedSlot, item); ShowItems(); });
+                y -= 140f;
+                shown++;
+            }
+
+            if (shown == 0)
+            {
+                var empty = UIFactory.CreateText("Empty", _bagPickerContent, _font,
+                    "No tienes items. Ganalos en aventuras.", 28,
+                    new Color(1f, 1f, 1f, 0.55f), TextAnchor.MiddleCenter);
+                UIFactory.Place(empty.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(900f, 80f));
+                y -= 100f;
+            }
+
+            ((RectTransform)_bagPickerContent).sizeDelta = new Vector2(0f, -y + 20f);
+        }
+
+        void ShowBagPicker(int slot)
+        {
+            _bagPickerSlot = slot;
+            PopulateBagPicker(slot);
+            ShowOnly(_bagPickerScreen);
+        }
+
+        // ---------------------------------------------------------------- Gacha
+
+        void BuildGachaScreen()
+        {
+            _gachaScreen = MakeScreen("GachaScreen", BgDark);
+            var root = _gachaScreen.transform;
+
+            AddHeader(root, "Invocacion");
+            AddBackButton(root, ShowWheel);
+
+            _gachaBalance = UIFactory.CreateText("Balance", root, _font, "", 32, Cyan, TextAnchor.MiddleCenter);
+            UIFactory.Place(_gachaBalance.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -175f), new Vector2(900f, 50f));
+            _gachaBalance.fontStyle = FontStyle.Bold;
+
+            var rates = UIFactory.CreateText("Rates", root, _font, HeroCatalog.RatesText(), 22,
+                new Color(1f, 1f, 1f, 0.55f), TextAnchor.UpperCenter);
+            UIFactory.Place(rates.rectTransform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -245f), new Vector2(900f, 200f));
+
+            var resultBg = UIFactory.CreateImage("ResultBg", root, new Color(0.12f, 0.10f, 0.22f, 1f));
+            UIFactory.Place(resultBg.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 30f), new Vector2(900f, 360f));
+
+            _gachaResult = UIFactory.CreateText("Result", resultBg.transform, _font,
+                "Invoca una Vision para comenzar.", 32, TextLight, TextAnchor.MiddleCenter);
+            UIFactory.Stretch(_gachaResult.rectTransform);
+
+            var summon = UIFactory.CreateButton("Summon", root, _font,
+                "Invocar  (" + Gacha.SingleCost + " cristales)", 34, PurpleVivid, TextLight);
+            UIFactory.Place((RectTransform)summon.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(680f, 120f));
+            summon.onClick.AddListener(DoSummon);
+        }
+
+        void RefreshGachaBalance()
+        {
+            if (_gachaBalance != null) _gachaBalance.text = "Cristales: " + Wallet.Crystals;
+        }
+
+        static string StarString(int stars)
+        {
+            string s = "";
+            for (int i = 1; i <= 5; i++) s += i <= stars ? "★" : "☆";
+            return s;
+        }
+
+        void DoSummon()
+        {
+            var res = Gacha.SummonSingle();
+            RefreshGachaBalance();
+
+            if (res == null || !string.IsNullOrEmpty(res.error))
+            {
+                _gachaResult.text = res != null ? res.error : "Error";
+                _gachaResult.color = Crimson;
+                return;
+            }
+
+            string stars = "<color=#F2C757>" + StarString(res.hero.stars) + "</color>";
+            if (res.isNew)
+            {
+                _gachaResult.text = "¡NUEVA VISION!\n\n" + res.hero.name + "\n" + stars + "\n<size=24>" + res.hero.role + "</size>";
+                _gachaResult.color = TextLight;
+            }
+            else
+            {
+                string extra = res.dupeMaterial != null ? ("\n+" + res.dupeAmount + " " + res.dupeMaterial.materialName) : "";
+                _gachaResult.text = "Duplicado\n\n" + res.hero.name + "\n" + stars +
+                                    "\n<size=24>+" + res.crystalRefund + " cristales" + extra + "</size>";
+                _gachaResult.color = new Color(1f, 1f, 1f, 0.85f);
+            }
+        }
+
+        // --------------------------------------------------------------- Mejora
+
+        void BuildMejoraScreen()
+        {
+            _mejoraScreen = MakeScreen("MejoraScreen", BgDark);
+            var root = _mejoraScreen.transform;
+
+            AddHeader(root, "Mejorar Visiones");
+            AddBackButton(root, ShowTeam);
+
+            var scroll = UIFactory.CreateVerticalScroll("MejoraScroll", root, out RectTransform content);
+            var srt = (RectTransform)scroll.transform;
+            srt.anchorMin = new Vector2(0f, 0f);
+            srt.anchorMax = new Vector2(1f, 1f);
+            srt.offsetMin = new Vector2(40f, 40f);
+            srt.offsetMax = new Vector2(-40f, -160f);
+            _mejoraContent = content;
+        }
+
+        void PopulateMejora()
+        {
+            for (int i = _mejoraContent.childCount - 1; i >= 0; i--)
+                Destroy(_mejoraContent.GetChild(i).gameObject);
+
+            float y = 0f;
+            foreach (var hero in TeamState.Owned)
+            {
+                if (hero == null) continue;
+                y = AddMejoraCard(hero, y);
+            }
+
+            ((RectTransform)_mejoraContent).sizeDelta = new Vector2(0f, -y + 20f);
+        }
+
+        float AddMejoraCard(HeroInfo hero, float y)
+        {
+            const float h = 300f;
+
+            var row = UIFactory.CreateImage("MejRow_" + hero.id, _mejoraContent, Purple);
+            UIFactory.Place(row.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, y), new Vector2(940f, h));
+
+            var nameT = UIFactory.CreateText("Name", row.transform, _font, hero.name + "   Nv " + hero.level, 30, TextLight, TextAnchor.UpperLeft);
+            UIFactory.Place(nameT.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, -20f), new Vector2(560f, 40f));
+            nameT.fontStyle = FontStyle.Bold;
+
+            var starsT = UIFactory.CreateText("Stars", row.transform, _font, StarString(hero.stars), 30, GoldColor, TextAnchor.UpperLeft);
+            UIFactory.Place(starsT.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, -62f), new Vector2(300f, 40f));
+
+            if (hero.stars >= StarUpgrade.MaxStars)
+            {
+                var max = UIFactory.CreateText("Max", row.transform, _font, "Estrellas al maximo", 28, Green, TextAnchor.MiddleCenter);
+                UIFactory.Place(max.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(60f, -20f), new Vector2(700f, 50f));
+                return y - (h + 20f);
+            }
+
+            float ry = -118f;
+            foreach (var r in StarUpgrade.Requirements(hero.stars))
+            {
+                string line = r.matName + "    " + r.have + " / " + r.need;
+                var t = UIFactory.CreateText("Req_" + r.matName, row.transform, _font, line, 24, r.ok ? Green : Crimson, TextAnchor.UpperLeft);
+                UIFactory.Place(t.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, ry), new Vector2(580f, 34f));
+                ry -= 40f;
+            }
+
+            int goldCost = StarUpgrade.GoldCost(hero.stars);
+            bool goldOk = Wallet.Gold >= goldCost;
+            var goldT = UIFactory.CreateText("GoldReq", row.transform, _font, "Oro    " + Wallet.Gold + " / " + goldCost, 24, goldOk ? Green : Crimson, TextAnchor.UpperLeft);
+            UIFactory.Place(goldT.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(30f, ry), new Vector2(580f, 34f));
+
+            bool can = StarUpgrade.CanUpgrade(hero);
+            var btn = UIFactory.CreateButton("Up_" + hero.id, row.transform, _font, "Subir a " + (hero.stars + 1) + "★", 28,
+                can ? PurpleVivid : new Color(0.25f, 0.22f, 0.34f, 1f), TextLight);
+            UIFactory.Place((RectTransform)btn.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-30f, 0f), new Vector2(290f, 120f));
+            btn.interactable = can;
+
+            HeroInfo captured = hero;
+            btn.onClick.AddListener(() =>
+            {
+                if (StarUpgrade.DoUpgrade(captured)) PopulateMejora();
+            });
+
+            return y - (h + 20f);
+        }
+
+        void ShowGacha()
+        {
+            RefreshGachaBalance();
+            if (_gachaResult != null)
+            {
+                _gachaResult.text = "Invoca una Vision para comenzar.";
+                _gachaResult.color = TextLight;
+            }
+            ShowOnly(_gachaScreen);
+        }
+
+        void ShowMejora()
+        {
+            PopulateMejora();
+            ShowOnly(_mejoraScreen);
         }
     }
 }
